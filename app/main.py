@@ -3,13 +3,18 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import List, Optional
 from fastapi.middleware.cors import CORSMiddleware
+# from mangum import Mangum
+from dotenv import load_dotenv
+import uvicorn
 # import asyncio
 import replicate
 
 app = FastAPI()
 
+load_dotenv()
+
 origins = [
-    "http://localhost:3000"
+    "*"
 ]
 
 app.add_middleware(
@@ -53,6 +58,11 @@ class TestData(BaseModel):
     prompt: str
 
 
+@app.get("/")
+def health_check():
+    return {"status": "ok"}
+
+
 @app.post("/")
 def chat(data: ChatData):
     message = data.messages[-1].content
@@ -62,3 +72,9 @@ def chat(data: ChatData):
 @app.post("/test")
 def test(data: TestData):
     return StreamingResponse(generate(data.prompt))
+
+
+# handler = Mangum(app)
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
