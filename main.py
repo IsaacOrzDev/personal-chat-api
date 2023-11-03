@@ -1,10 +1,24 @@
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+from typing import List, Optional
+from fastapi.middleware.cors import CORSMiddleware
 # import asyncio
 import replicate
 
 app = FastAPI()
+
+origins = [
+    "http://localhost:3000"
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 async def generate(prompt: str):
@@ -24,10 +38,27 @@ async def generate(prompt: str):
         yield item
 
 
-class Data(BaseModel):
+class Message(BaseModel):
+    role: str
+    content: str
+
+
+class ChatData(BaseModel):
+    messages: List[Message]
+    id: str
+    previewToken: Optional[str] = None
+
+
+class TestData(BaseModel):
     prompt: str
 
 
 @app.post("/")
-def read_root(data: Data):
+def chat(data: ChatData):
+    message = data.messages[-1].content
+    return StreamingResponse(generate(message))
+
+
+@app.post("/test")
+def test(data: TestData):
     return StreamingResponse(generate(data.prompt))
