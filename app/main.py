@@ -3,11 +3,13 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import List, Optional
 from fastapi.middleware.cors import CORSMiddleware
-# from mangum import Mangum
 from dotenv import load_dotenv
 import uvicorn
 import asyncio
 import replicate
+from llama_index import StorageContext, ServiceContext, load_index_from_storage, LangchainEmbedding
+from llama_index.llms import Replicate
+from langchain.embeddings import CohereEmbeddings
 
 app = FastAPI()
 
@@ -53,6 +55,43 @@ async def generate(prompt: str):
         yield item
 
 
+async def ask(prompt: str):
+    llama2 = "meta/llama-2-13b-chat:f4e2de70d66816a838a89eeeb621910adffb0dd0baba3976c96980970978018d"
+    llm = Replicate(
+        model=llama2,
+        temperature=0.01,
+        additional_kwargs={"top_p": 1, "max_new_tokens":300}
+    )
+    embed_model = LangchainEmbedding(CohereEmbeddings())
+    service_context = ServiceContext.from_defaults(llm=llm, embed_model=embed_model)
+    
+
+    storage_context = StorageContext.from_defaults(persist_dir='./storage')
+    index = load_index_from_storage(storage_context, service_context=service_context)
+    # query_engine = index.as_query_engine(streaming=True, similarity_top_k=1)
+    # custom_chat_history = []
+    # chat_engine = CondenseQuestionChatEngine.from_defaults(
+    #     query_engine=query_engine, 
+    #     condense_question_prompt=custom_prompt,
+    #     chat_history=custom_chat_history,
+    #     service_context=service_context,
+    #     verbose=True,
+    # )
+
+    with open("./data/system_prompt.txt", "r") as file:
+        system_prompt = file.read()    
+
+    chat_engine = index.as_chat_engine(
+        chat_mode="context",
+        system_prompt=system_prompt
+        ,
+    )
+
+    streaming_response = chat_engine.stream_chat(message=prompt)
+    for text in streaming_response.response_gen:
+        yield text
+
+
 class Message(BaseModel):
     role: str
     content: str
@@ -73,13 +112,15 @@ def health_check():
     return {"status": "ok"}
 
 
+
 @app.post("/")
 def chat(data: ChatData):
     if len(data.messages) == 0:
         return StreamingResponse(introduce())
 
     message = data.messages[-1].content
-    return StreamingResponse(generate(message))
+    return StreamingResponse(ask(message))
+    # return StreamingResponse(generate(message))
 
 
 @app.post("/test")
