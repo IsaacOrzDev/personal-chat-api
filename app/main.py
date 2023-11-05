@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 # from mangum import Mangum
 from dotenv import load_dotenv
 import uvicorn
-# import asyncio
+import asyncio
 import replicate
 
 app = FastAPI()
@@ -25,9 +25,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+def split_text_by_length(text, length):
+    return [text[i:i+length] for i in range(0, len(text), length)]
+
+async def introduce():
+    with open("./data/introduction.txt", "r") as file:
+        message = file.read()
+    lines = split_text_by_length(message, 80)
+    for line in lines:
+        yield line
+        await asyncio.sleep(0.3)
+
 
 async def generate(prompt: str):
-    print(prompt)
     output = replicate.run(
         "meta/llama-2-13b-chat:f4e2de70d66816a838a89eeeb621910adffb0dd0baba3976c96980970978018d",
         input={
@@ -65,6 +75,9 @@ def health_check():
 
 @app.post("/")
 def chat(data: ChatData):
+    if len(data.messages) == 0:
+        return StreamingResponse(introduce())
+
     message = data.messages[-1].content
     return StreamingResponse(generate(message))
 
