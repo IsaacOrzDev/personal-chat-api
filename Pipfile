@@ -23,6 +23,7 @@ python_version = "3.10"
 [scripts]
 start = "uvicorn app.main:app --reload"
 build = "docker build --platform linux/amd64 -t personal-chat-api:latest ."
+persist = "python ./persist.py"
 
 [pipenv]
 allow_prereleases = true

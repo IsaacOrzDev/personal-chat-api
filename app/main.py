@@ -45,7 +45,7 @@ def split_text_by_length(text, length):
     return [text[i:i+length] for i in range(0, len(text), length)]
 
 async def introduce():
-    with open("./data/introduction.txt", "r") as file:
+    with open("./prompts/introduction.txt", "r") as file:
         message = file.read()
     lines = split_text_by_length(message, 80)
     for line in lines:
@@ -83,7 +83,7 @@ async def ask(prompt: str, messages: List[Message]):
     storage_context = StorageContext.from_defaults(persist_dir='./storage')
     index = load_index_from_storage(storage_context, service_context=service_context)
 
-    with open("./data/system_prompt.txt", "r") as file:
+    with open("./prompts/system_prompt.txt", "r") as file:
         system_prompt = file.read()    
 
     chat_engine = index.as_chat_engine(
