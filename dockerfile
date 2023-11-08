@@ -8,4 +8,4 @@ RUN pip install -r requirements.txt
 ENV PORT=8000
 
 EXPOSE 8000
-CMD ["python", "./app/main.py"]
+CMD ["uvicorn", "app.main:app"]
